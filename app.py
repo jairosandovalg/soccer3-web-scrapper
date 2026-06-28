@@ -3,24 +3,18 @@ import sys
 import streamlit as st
 import pandas as pd
 import time
+import subprocess
 
-# --- COMPROBACIÓN E INSTALACIÓN INTERNA DIRECTA ---
+# --- COMPROBACIÓN E INSTALACIÓN INTERNA DIRECTA CON SUBPROCESS ---
 if 'navegador_configurado' not in st.session_state:
-    with st.spinner("Inicializando binarios del entorno web... (Solo la primera vez)"):
+    with st.spinner("Inicializando binarios de Playwright... (Solo la primera vez)"):
         try:
-            # Importamos dinámicamente el instalador de Playwright para usar su lógica nativa de Python
-            from playwright.cli.main import main as playwright_cli
-            
-            # Forzamos la descarga de chromium pasando los argumentos directamente al objeto de Python
-            sys.argv = ["playwright", "install", "chromium"]
-            playwright_cli()
-            
-            st.session_state['navegador_configurado'] = True
-        except SystemExit:
-            # El CLI de Playwright suele llamar a sys.exit(0) al terminar, lo capturamos para que no apague Streamlit
+            # Usamos el ejecutable nativo de python activo en Streamlit Cloud para instalar el binario
+            subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
             st.session_state['navegador_configurado'] = True
         except Exception as e:
-            st.error(f"Aviso de inicialización: {str(e)}")
+            st.error(f"Error al inicializar el entorno del navegador: {str(e)}")
+            st.stop()
             
     from playwright.sync_api import sync_playwright
     st.rerun()
@@ -45,6 +39,7 @@ def extraer_estadisticas_partido(context, url_partido):
     page = None
     try:
         page = context.new_page()
+        # Bloquear elementos pesados para acelerar la carga analítica y ahorrar RAM
         page.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "font", "stylesheet"] else route.continue_())
         
         page.goto(url_partido, timeout=7000, wait_until="domcontentloaded")
@@ -62,6 +57,7 @@ def extraer_estadisticas_partido(context, url_partido):
         if minuto_el.count() > 0:
             datos_partido["Minuto"] = minuto_el.text_content(timeout=500).strip()
             
+        # Hacer clic en la pestaña de Estadísticas si existe
         boton_stats = page.locator("//button[@role='tab' and contains(., 'Estadísticas')]").first
         if boton_stats.count() > 0:
             boton_stats.click(timeout=1000)
@@ -171,13 +167,3 @@ def contenedor_monitoreo_vivo():
             estado_placeholder.error(f"Error en la iteración actual: {str(e)}")
         finally:
             if context:
-                context.close()
-            if browser:
-                browser.close()
-
-    time.sleep(60)
-    st.rerun()
-
-# --- 3. RENDERIZADO PRINCIPAL ---
-st.write("### 📈 Cuadro de Control General (Actualización Automática)")
-contenedor_monitoreo_vivo()
