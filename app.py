@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 import time
@@ -28,7 +29,7 @@ def extraer_estadisticas_partido(context, url_partido):
         # Esperar al contenedor principal del marcador
         page.wait_for_selector("div.detailScore__wrapper", timeout=4000)
         
-        # Extracción directa usando selectores nativos (Sin BeautifulSoup)
+        # Extracción directa usando selectores nativos
         marcador_el = page.locator("div.detailScore__wrapper").first
         if marcador_el.count() > 0:
             datos_partido["Marcador"] = marcador_el.text_content(timeout=500).strip()
@@ -74,9 +75,12 @@ def extraer_estadisticas_partido(context, url_partido):
 # --- PROCESO PRINCIPAL EN INTERFAZ ---
 
 if st.button("🔄 Ejecutar Escaneo Completo y Generar Tabla"):
+    # 1. Asegurar la instalación de los binarios del navegador en la nube
+    with st.spinner("Verificando e instalando componentes del navegador en la nube..."):
+        os.system("playwright install chromium")
+
+    # 2. Iniciar el flujo de scraping
     with st.spinner("Conectando a la sección EN DIRECTO con Playwright..."):
-        
-        # Iniciamos el gestor de contexto de Playwright
         with sync_playwright() as p:
             browser = None
             context = None
@@ -153,8 +157,6 @@ if st.button("🔄 Ejecutar Escaneo Completo y Generar Tabla"):
             except Exception as e:
                 st.error(f"Fallo crítico en el sistema de análisis: {str(e)}")
             finally:
-                # Playwright cierra todo automáticamente al salir del bloque 'with',
-                # pero nos aseguramos por buenas prácticas.
                 if context:
                     context.close()
                 if browser:
