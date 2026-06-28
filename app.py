@@ -1,12 +1,31 @@
 import os
 import sys
-
-# --- CONFIGURACIÓN DE RUTA PARA SERVIDORES NUBE ---
-os.environ["PLAYWRIGHT_BROWSERS_PATH"] = "0" 
-
 import streamlit as st
 import pandas as pd
 import time
+
+# --- COMPROBACIÓN E INSTALACIÓN INTERNA DIRECTA ---
+if 'navegador_configurado' not in st.session_state:
+    with st.spinner("Inicializando binarios del entorno web... (Solo la primera vez)"):
+        try:
+            # Importamos dinámicamente el instalador de Playwright para usar su lógica nativa de Python
+            from playwright.cli.main import main as playwright_cli
+            
+            # Forzamos la descarga de chromium pasando los argumentos directamente al objeto de Python
+            sys.argv = ["playwright", "install", "chromium"]
+            playwright_cli()
+            
+            st.session_state['navegador_configurado'] = True
+        except SystemExit:
+            # El CLI de Playwright suele llamar a sys.exit(0) al terminar, lo capturamos para que no apague Streamlit
+            st.session_state['navegador_configurado'] = True
+        except Exception as e:
+            st.error(f"Aviso de inicialización: {str(e)}")
+            
+    from playwright.sync_api import sync_playwright
+    st.rerun()
+
+# Importación segura una vez garantizado el entorno
 from playwright.sync_api import sync_playwright
 
 # Configuración de la interfaz de Streamlit
@@ -26,7 +45,6 @@ def extraer_estadisticas_partido(context, url_partido):
     page = None
     try:
         page = context.new_page()
-        # Bloquear elementos pesados para acelerar la carga analítica y ahorrar RAM
         page.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "font", "stylesheet"] else route.continue_())
         
         page.goto(url_partido, timeout=7000, wait_until="domcontentloaded")
@@ -44,7 +62,6 @@ def extraer_estadisticas_partido(context, url_partido):
         if minuto_el.count() > 0:
             datos_partido["Minuto"] = minuto_el.text_content(timeout=500).strip()
             
-        # Hacer clic en la pestaña de Estadísticas si existe
         boton_stats = page.locator("//button[@role='tab' and contains(., 'Estadísticas')]").first
         if boton_stats.count() > 0:
             boton_stats.click(timeout=1000)
@@ -158,7 +175,6 @@ def contenedor_monitoreo_vivo():
             if browser:
                 browser.close()
 
-    # Pausa de un minuto antes de refrescar solo este contenedor
     time.sleep(60)
     st.rerun()
 
