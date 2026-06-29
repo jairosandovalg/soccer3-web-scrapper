@@ -166,4 +166,15 @@ def contenedor_monitoreo_vivo():
         except Exception as e:
             estado_placeholder.error(f"Error en la iteración actual: {str(e)}")
         finally:
+            # Aquí estaba el error (línea 169). Ya está correctamente indentado:
             if context:
+                context.close()
+            if browser:
+                browser.close()
+
+    time.sleep(60)
+    st.rerun()
+
+# --- 3. RENDERIZADO PRINCIPAL ---
+st.write("### 📈 Cuadro de Control General (Actualización Automática)")
+contenedor_monitoreo_vivo()
