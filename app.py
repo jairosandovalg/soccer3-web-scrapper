@@ -7,9 +7,9 @@ import subprocess
 
 # --- COMPROBACIÓN E INSTALACIÓN INTERNA DIRECTA CON SUBPROCESS ---
 if 'navegador_configurado' not in st.session_state:
-    with st.spinner("Inicializando binarios de Playwright... (Solo la primera vez)"):
+    with st.spinner("Inicializando binarios de Playwright en el servidor... (Solo la primera vez)"):
         try:
-            # Usamos el ejecutable nativo de python activo en Streamlit Cloud para instalar el binario
+            # Descargamos el binario de chromium correspondiente a Playwright
             subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
             st.session_state['navegador_configurado'] = True
         except Exception as e:
@@ -166,7 +166,6 @@ def contenedor_monitoreo_vivo():
         except Exception as e:
             estado_placeholder.error(f"Error en la iteración actual: {str(e)}")
         finally:
-            # Aquí estaba el error (línea 169). Ya está correctamente indentado:
             if context:
                 context.close()
             if browser:
